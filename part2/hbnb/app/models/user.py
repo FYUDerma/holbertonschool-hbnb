@@ -105,3 +105,17 @@ class User(BaseModel):
         if not isinstance(value, bool):
             raise ValueError('is_admin must be a boolean')
         self.__is_admin = value
+
+    @property
+    def password(self):
+        """
+        Get the user's password.
+        """
+        return self.password
+    
+    @password.setter
+    def password(self, value):
+        """
+        Set the user's password.
+        """
+        self.hash_password(value)
