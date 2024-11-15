@@ -1,4 +1,5 @@
 from flask_restx import Namespace, Resource, fields
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.services import facade
 
@@ -88,16 +89,21 @@ class PlaceList(Resource):
     @api.expect(place_model, validate=True)
     @api.response(201, 'Place successfully created')
     @api.response(400, 'Invalid input data')
+    @api.response(401, 'Unauthorized action')
+    @jwt_required()
     def post(self):
         """Register a new place"""
+        current_user = get_jwt_identity()
         place_data = api.payload
 
         user = facade.get_user(place_data.get('owner_id'))
         if user is None:
             return {'error': 'Invalid owner_id'}, 400
+        
+        if current_user[id] != user.id:
+            return {'error': 'Unauthorized action'}, 401
 
-        del place_data['owner_id']
-        place_data['owner'] = user
+
         if place_data.get('amenities'):
             for amenity in place_data.get('amenities'):
                 if facade.get_amenity(amenity['id']) is None:
@@ -140,6 +146,7 @@ class PlaceResource(Resource):
     def get(self, place_id):
         """Get place details by ID"""
         place = facade.get_place(place_id)
+        owner = facade.get_user(place.owner_id)
         if place:
             return {
                 'id': place.id,
@@ -153,15 +160,7 @@ class PlaceResource(Resource):
                     'first_name': place.owner.first_name,
                     'last_name': place.owner.last_name,
                     'email': place.owner.email
-                    },
-                'amenities': [
-                    {
-                        'id': facade.get_place(place_id).id,
-                        'name': facade.get_amenity(amenity['id']).name
-                    }
-                    for amenity in place.amenities
-                    ]
-                    }, 200
+                    }}, 200
         return {'error': 'Place not found'}, 404
 
     @api.expect(place_model, validate=True)
@@ -171,7 +170,6 @@ class PlaceResource(Resource):
     def put(self, place_id):
         """Update a place's information"""
         place_data = api.payload
-
         user = facade.get_user(place_data.get('owner_id'))
         if user is None:
             return {'error': 'Invalid owner_id'}, 400
