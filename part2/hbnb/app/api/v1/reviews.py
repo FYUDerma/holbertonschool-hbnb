@@ -99,9 +99,16 @@ class ReviewResource(Resource):
     @api.response(200, 'Review updated successfully')
     @api.response(404, 'Review not found')
     @api.response(400, 'Invalid input data')
+    @api.response(403, 'Unauthorized action')
+    @jwt_required()
     def put(self, review_id):
         """Update a review's information"""
         review_data = api.payload
+        current_user = get_jwt_identity()
+
+        review = facade.get_review(review_id)
+        if review.user.id != current_user['id']:
+            return {'error': 'Unauthorized action'}, 403
 
         if review_data == facade.get_review(review_id):
             return {'error': 'Invalid input data'}, 400
@@ -114,8 +121,13 @@ class ReviewResource(Resource):
 
     @api.response(200, 'Review deleted successfully')
     @api.response(404, 'Review not found')
+    @jwt_required
     def delete(self, review_id):
         """Delete a review"""
+        current_user = get_jwt_identity()
+        if current_user['id'] != facade.get_review(review_id).user.id:
+            return {'error': 'Unauthorized action'}, 403
+
         if facade.get_review(review_id):
             place = facade.get_place(review_id)
             if place:
