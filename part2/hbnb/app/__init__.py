@@ -28,7 +28,17 @@ def create_app(config_class="config.DevelopmentConfig"):
         app,
         version='1.0',
         title='HBnB API',
-        description='HBnB Application API'
+        description='HBnB Application API',
+        authorizations={
+            'Bearer Auth': {
+                'type': 'apiKey',
+                'in': 'header',
+                'name': 'Authorization',
+                'description': 'Bearer token'
+            }
+        },
+        security='Bearer Auth'
+        
     )
 
     # Add namespaces to the API
