@@ -31,8 +31,13 @@ class UserList(Resource):
     @api.expect(user_model, validate=True)
     @api.response(200, 'User successfully created')
     @api.response(400, 'Email already registered')
+    @api.response(403, 'Admin privileges required')
+    @jwt_required()
     def post(self):
         """Register a new user"""
+        current_user = get_jwt_identity()
+        if current_user.get('is_admin', False):
+            return {'error': 'Admin privileges required'}, 403
         user_data = api.payload
 
         user = facade.get_user_by_email(user_data['email'])
