@@ -98,18 +98,30 @@ class UserResource(Resource):
         user_data = api.payload
         current_user = get_jwt_identity()
 
-        if current_user['id'] != user_id:
-            return {'error': 'Unauthorized action'}, 403
+        if current_user.get('is_admin', False):
+            is_admin = facade.get_user(current_user['id']).is_admin
+
+            # Admin users can update any user details
+            if not is_admin:
+                return {'error': 'Admin privileges required'}, 403
+            
+            # Admin users cannot update email if it already exists
+            if facade.get_user_by_email(user_data['email']):
+                return {'error': 'Email already registered'}, 400
+            
+        else:
+            # Non-admin users can only update their own details
+            if 'email' in user_data or 'password' in user_data:
+                return {'error': 'email and password cannot be updated'}, 403
+            
+            # Non-admin users can only update their own details
+            if current_user['id'] != user_id:
+                 return {'error': 'Unauthorized action'}, 403
+
         
         user = facade.get_user(user_id)
         if not user:
             return {'error': 'User not found'}, 404
-
-        if user == facade.get_user(user_id):
-            return {'error': 'No changes detected'}, 400
-
-        if 'email' in user_data or 'password' in user_data:
-            return {'error': 'Email and password cannot be updated'}, 400
 
         try:
             facade.update_user(user_id, user_data)
